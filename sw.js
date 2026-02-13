@@ -26,8 +26,13 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(req).then(cached => cached || fetch(req).then(res => {
       const copy = res.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-      return res;
+      caches.const urlsToCache = [
+  "/EDILAPP2.0/",
+  "/EDILAPP2.0/index.html",
+  "/EDILAPP2.0/manifest.json",
+  "/EDILAPP2.0/icon-192.png",
+  "/EDILAPP2.0/icon-512.png"
+];
     }).catch(() => caches.match('./Testo4_iPhone_PWA_computo_v45.html')))
   );
 });
