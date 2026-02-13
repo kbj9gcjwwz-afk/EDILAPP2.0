@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EdilApp v40 AI-Voice</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EdilApp">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#007AFF">
+
+
+<style>
+:root{ --primary: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --danger: #FF3B30; --success: #34C759; --dark: #1C1C1E; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding-bottom: 160px; color: #000; -webkit-tap-highlight-color: transparent; }
+.container { max-width: 800px; margin: 0 auto; padding: 10px; }
+
+/* Cards & Input */
+.card { background: var(--card); border-radius: 16px; padding: 18px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+h2, h3 { margin: 0 0 15px 0; color: var(--dark); }
+input, select, textarea { width: 100%; padding: 14px; border: 1px solid #D1D1D6; border-radius: 10px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; background: #fff; -webkit-appearance: none; }
+input:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(0,122,255,0.2); }
+label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #8E8E93; margin-bottom: 4px; display: block; }
+
+/* Buttons */
+.btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 16px; text-align: center; margin-bottom: 8px; cursor: pointer; transition: 0.1s; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--primary); }
+.btn-success { background: var(--success); }
+.btn-danger { background: var(--danger); }
+.btn-dark { background: var(--dark); }
+.btn-voice { background: linear-gradient(135deg, #FF2D55, #FF9500); } /* Gradiente AI */
+.btn-search { background: #5856D6; } /* Viola Ricerca */
+.btn-row { display: flex; gap: 8px; }
+.btn-small { padding: 8px 12px; font-size: 13px; width: auto; margin: 0; }
+
+/* Utilities */
+.hidden { display: none; }
+.voce-item { background: #fff; border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+.search-box { background: #E1F0FF; padding: 12px; border-radius: 12px; border: 1px solid var(--primary); margin-bottom: 15px; }
+
+/* Floating Bar */
+.floating-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.98); border-top: 1px solid #ccc; padding: 15px; z-index: 90; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); }
+.float-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.tot-text { font-size: 20px; font-weight: 900; color: var(--dark); }
+
+/* Switch & Overlay Stampa */
+.switch-label { display: flex; align-items: center; cursor: pointer; font-size: 14px; color: #555; }
+.switch-label input { width: auto; margin-right: 10px; }
+#printOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #555; z-index: 2000; overflow-y: auto; display: none; }
+.print-paper { background: white; max-width: 210mm; min-height: 297mm; margin: 20px auto; padding: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+.print-controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 2001; }
+.btn-float { padding: 12px 30px; border-radius: 30px; font-weight: bold; border: none; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-size: 16px; cursor: pointer; }
+
+@media print {
+  body * { visibility: hidden; }
+  #printOverlay, #printOverlay * { visibility: visible; }
+  #printOverlay { position: absolute; left: 0; top: 0; background: white; padding: 0; }
+  .print-paper { box-shadow: none; margin: 0; width: 100%; max-width: 100%; padding: 0; }
+  .print-controls { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="appInterface">
+  
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center; background:#1c1c1e; color:white;">
+    <div><h2 style="color:white; margin:0;">EdilApp v40</h2><small>AI & Voice Edition 🎤</small></div>
+    <button class="btn btn-primary btn-small" onclick="toggleView('archivio')">📂 Archivio</button>
+  </div>
+
+  <div class="card">
+    <button type="button" class="btn btn-dark" onclick="document.getElementById('confBox').classList.toggle('hidden')">⚙️ Dati Azienda & Listino CSV</button>
+    <div id="confBox" style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+      
+      <div style="background:#f0f0f0; padding:15px; border-radius:10px; margin-bottom:15px; border-left: 5px solid var(--primary);">
+        <label style="color:var(--primary);">CARICA LISTINO (FORMATO COMPLETO)</label>
+        <div style="font-size:11px; margin-bottom:5px; color:#555;">Legge correttamente anche le descrizioni con virgole.</div>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('csvFile').click()">📄 Seleziona CSV (iPhone)</button>
+        <input type="file" id="csvFile" accept=".csv" onchange="importaCSV(event)">
+        <div id="csvStatus" style="font-weight:bold; font-size:12px; margin-top:5px;"></div>
+        <div style="font-size:12px; color:#666; margin-top:8px;">💡 Su iPhone: apri questo file in <b>Safari</b> (non in Anteprima/File) per caricare correttamente i CSV.</div>
+
+        <button class="btn btn-danger btn-small" onclick="svuotaListino()" style="margin-top:10px;">🗑️ Svuota Listino</button>
+      </div>
+      
+      <label>Logo Azienda</label><input type="file" onchange="salvaLogo(event)">
+      <label>Intestazione</label><textarea id="confIntestazione" rows="2" onchange="salvaConfig()" placeholder="Nome Ditta, P.IVA..."></textarea>
+      <label>Footer</label><textarea id="confFooter" rows="2" onchange="salvaConfig()" placeholder="IBAN..."></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>1. Dati Preventivo</h3>
+    <div class="btn-row">
+      <div style="width:40%"><label>Numero</label><input id="numPrev" value="2024/001"></div>
+      <div style="width:60%"><label>Data</label><input type="date" id="dataPrev"></div>
+    </div>
+    <input id="clienteNome" placeholder="Nome Cliente (Obbligatorio)">
+    <input id="clienteIndirizzo" placeholder="Indirizzo Cantiere">
+    <div class="btn-row">
+      <input id="clienteCF" placeholder="C.F. / P.IVA">
+      <div style="width:80px">
+        <select id="ivaSelect" onchange="renderVoci()" style="padding:12px 5px;"><option value="0">0%</option><option value="4">4%</option><option value="10" selected>10%</option><option value="22">22%</option></select>
+      </div>
+    </div>
+    <button class="btn btn-success" onclick="salvaPreventivo()">💾 SALVA LAVORO</button>
+  </div>
+
+  <div class="card">
+    <h3>2. Voci & Intelligenza</h3>
+    
+    <div class="search-box">
+      <label style="color:var(--primary);">🔍 CERCA NEL LISTINO CSV</label>
+      <div class="btn-row">
+        <select id="filtroCat" onchange="filtraListino()" style="flex:1;"><option value="">Filtra Categoria...</option></select>
+        <input id="txtCerca" placeholder="Es. Demolizione..." onkeyup="filtraListino()" style="flex:2; margin:0;">
+      </div>
+      <select id="risultatiListino" onchange="selezionaVoce()" style="margin-top:10px; font-weight:bold; color:#333;"><option value="">-- Risultati --</option></select>
+    </div>
+
+    <div style="background:#f8f8f8; padding:15px; border-radius:12px;">
+      <label>Categoria</label><input id="editCat" placeholder="Generale">
+      
+      <label>Descrizione (Scrivi o Detta)</label>
+      <div style="position:relative;">
+        <textarea id="editDesc" rows="3" placeholder="Descrizione dettagliata..."></textarea>
+        <button class="btn btn-voice" onclick="startVoice()" style="position:absolute; bottom:15px; right:10px; width:40px; height:40px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.2);" title="Detta voce">🎤</button>
+      </div>
+
+      <button class="btn btn-search btn-small" onclick="cercaSulWeb()" style="margin-bottom:15px;">🔍 Cerca Prezzo/Info Online</button>
+
+      <div class="btn-row">
+        <div style="width:30%"><label>UM</label><input id="editUm" style="text-align:center" placeholder="mq"></div>
+        <div style="width:70%"><label>Prezzo €</label><input type="number" id="editPrezzo" placeholder="0.00"></div>
+      </div>
+      <label style="color:var(--primary);">QUANTITÀ</label>
+      <input type="number" id="editQta" placeholder="0" style="font-size:22px; font-weight:900; text-align:center; border:2px solid var(--primary); color:var(--primary);">
+      <div style="margin-top:8px; text-align:center; font-weight:700; font-size:16px;">Totale riga: <span id="editTotaleRiga">€ 0,00</span></div>
+
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <label class="switch-label"><input type="checkbox" id="saveToListino" checked> Salva in memoria</label>
+        <button class="btn btn-primary" style="width:auto; padding:12px 30px;" onclick="aggiungiVoce()">AGGIUNGI</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3>Riepilogo</h3>
+      <label class="switch-label" style="margin:0;"><input type="checkbox" id="chkNoPrezzi"> Nascondi prezzi unitari</label>
+    </div>
+
+    <div id="containerVoci"></div>
+    <div id="msgVuoto" style="text-align:center; color:#999; padding:20px;">Nessuna voce.</div>
+
+    <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+    
+    <h3>Pagamenti (SAL)</h3>
+    <div class="btn-row" style="margin-bottom:15px;">
+      <button class="btn btn-small btn-outline" onclick="addSALPreset('Acconto', 30)">30% Acconto</button>
+      <button class="btn btn-small btn-outline" onclick="addSALPreset('S.A.L.', 30)">30% S.A.L.</button>
+      <button class="btn btn-small btn-outline" onclick="addSALPreset('Saldo', 10)">Saldo</button>
+    </div>
+    <div id="containerSAL"></div>
+  </div>
+
+  <div style="height:120px;"></div>
+</div>
+
+<div class="floating-bar" id="floatBar">
+  <div class="float-row">
+    <div style="font-size:12px; color:#666;" id="countVoci">0 Voci</div>
+    <div class="tot-text" id="totDisplay">€ 0,00</div>
+  </div>
+  <button class="btn btn-primary" onclick="anteprimaStampa()">🖨️ GENERA PREVENTIVO PDF</button>
+</div>
+
+<div id="printOverlay">
+  <div class="print-paper" id="foglioA4"></div>
+  <div class="print-controls">
+    <button class="btn-float" style="background:#FF3B30" onclick="chiudiStampa()">Chiudi</button>
+    <button class="btn-float" style="background:#34C759" onclick="window.print()">🖨️ Stampa</button>
+  </div>
+</div>
+
+<div id="archivioModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:3000; padding:20px; box-sizing:border-box; overflow-y:auto;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <h2>Archivio</h2>
+    <button class="btn btn-danger btn-small" onclick="toggleView('main')">Chiudi</button>
+  </div>
+  <div id="listaArchivio"></div>
+</div>
+
+<script>
+// === CORE DB ===
+let db;
+let listino = [];
+let preventivo = [];
+let salList = [];
+let currentId = null;
+
+const req = indexedDB.open("EdilApp_v40_AI", 1);
+req.onupgradeneeded = e => {
+  db = e.target.result;
+  ['config', 'preventivi', 'listino'].forEach(s => { if(!db.objectStoreNames.contains(s)) db.createObjectStore(s, {keyPath:'id'}); });
+};
+req.onsuccess = e => { db=e.target.result; init(); };
+
+function init(){
+  caricaConfig();
+  caricaListino();
+  document.getElementById('dataPrev').valueAsDate = new Date();
+
+  // iPhone: aggiorna totale riga in tempo reale
+  const q = document.getElementById('editQta');
+  const p = document.getElementById('editPrezzo');
+  if(q) q.addEventListener('input', updateTotaleRiga);
+  if(p) p.addEventListener('input', updateTotaleRiga);
+  updateTotaleRiga();
+}
+
+// === 1. PARSER CSV "BLINDATO" (Gestione Virgole) ===
+function parseCSVLine(text, sep=',') {
+  // Parser CSV robusto (supporta virgola o punto e virgola, virgolette e doppi apici)
+  const out = [];
+  let cur = '';
+  let inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const ch = text[i];
+    if(ch === '"'){
+      // doppio apice dentro campo quotato => "
+      if(inQuotes && text[i+1] === '"'){ cur += '"'; i++; continue; }
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if(!inQuotes && ch === sep){
+      out.push(cur);
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+function parsePrice(input) {
+  if (!input) return 0;
+  let str = String(input).trim().replace(/[€$£\s]/g, ''); 
+  if (str.includes(',') && (!str.includes('.') || str.indexOf(',') > str.lastIndexOf('.'))) {
+      str = str.replace(/\./g, '').replace(',', '.');
+  } else { str = str.replace(/,/g, ''); }
+  return parseFloat(str) || 0;
+}
+
+function updateTotaleRiga(){
+  const qEl = document.getElementById('editQta');
+  const pEl = document.getElementById('editPrezzo');
+  const out = document.getElementById('editTotaleRiga');
+  if(!qEl || !pEl || !out) return;
+  const q = parseFloat(qEl.value)||0;
+  const p = parseFloat(pEl.value)||0;
+  const tot = q*p;
+  out.textContent = '€ ' + tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+
+function importaCSV(e){
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+
+  const status = document.getElementById('csvStatus');
+  if(status){ status.textContent = "⏳ Lettura file..."; status.style.color="#333"; }
+
+  const r = new FileReader();
+  r.onload = evt => {
+    const raw = (evt.target.result || "").replace(/\uFEFF/g,''); // rimuove BOM
+    const lines = raw.split(/\r\n|\n/).filter(l => l && l.trim().length);
+
+    if(!lines.length){
+      if(status){ status.textContent = "⚠️ File vuoto o non leggibile."; status.style.color="var(--danger)"; }
+      return;
+    }
+
+    // Determina separatore usando la prima riga "utile"
+    const probe = lines[0];
+    const comma = (probe.match(/,/g)||[]).length;
+    const semi  = (probe.match(/;/g)||[]).length;
+    const sep = semi > comma ? ';' : ',';
+
+    // Parser robusto per righe CSV (gestisce virgolette)
+    const parseLine = (line) => line.includes('"') ? parseCSVLine(line, sep) : line.split(sep);
+
+    // Header detection
+    const firstCols = parseLine(lines[0]).map(c => (c||"").replace(/^"|"$/g,'').trim());
+    const looksHeader = firstCols.some(c => /[a-zA-Z]/.test(c)) && firstCols.join(" ").toLowerCase().includes("descr");
+    let header = null;
+    let startIdx = 0;
+    if(looksHeader){
+      header = firstCols.map(h => normalizeHeader(h));
+      startIdx = 1;
+    }
+
+    // Colonne standard attese / sinonimi
+    const idxOf = (key) => header ? header.indexOf(key) : -1;
+
+    const tx = db.transaction('listino','readwrite');
+    let imported = 0;
+
+    for(let i=startIdx;i<lines.length;i++){
+      const line = lines[i];
+      if(!line || !line.trim()) continue;
+
+      let cols = parseLine(line);
+      if(!cols || cols.length < 2) continue;
+      cols = cols.map(c => c ? c.replace(/^"|"$/g,'').trim() : '');
+
+      // Skip eventuali intestazioni ripetute
+      const maybeHeader = cols.join(" ").toLowerCase();
+      if(maybeHeader.includes("codice") && maybeHeader.includes("descr")) continue;
+
+      let code="", cat="Generale", desc="", um="pz", prezzoRaw="", qtaRaw="", impRaw="";
+
+      if(header){
+        const iCode = idxOf('codice');
+        const iCat  = idxOf('categoria');
+        const iSub  = idxOf('sottocategoria');
+        const iDesc = idxOf('descrizione');
+        const iUm   = idxOf('um');
+        const iPrez = idxOf('prezzo_unitario');
+        const iQta  = idxOf('quantita');
+        const iImp  = idxOf('importo');
+
+        code = pick(cols, iCode);
+        const catMain = pick(cols, iCat);
+        const catSub  = pick(cols, iSub);
+        cat = (catMain || 'Generale') + (catSub ? (' - ' + catSub) : '');
+
+        desc = pick(cols, iDesc);
+        um   = pick(cols, iUm) || 'pz';
+        prezzoRaw = pick(cols, iPrez);
+        qtaRaw    = pick(cols, iQta);
+        impRaw    = pick(cols, iImp);
+
+        // Se è un computo: prova a derivare prezzo unitario = importo / quantita
+        if((!prezzoRaw || !prezzoRaw.trim()) && impRaw && qtaRaw){
+          const q = parsePrice(qtaRaw);
+          const imp = parsePrice(impRaw);
+          if(q && q > 0 && imp && imp > 0){
+            prezzoRaw = String(imp / q);
+          }
+        }
+      } else {
+        // Modalità "senza header": mantiene compatibilità col formato precedente
+        // 6 colonne: codice, cat, sottocat, desc, um, prezzo
+        if(cols.length >= 6){
+          code = cols[0];
+          cat = (cols[1] || 'Generale') + (cols[2] ? (' - ' + cols[2]) : '');
+          desc = cols[3];
+          um = cols[4] || 'pz';
+          prezzoRaw = cols[5];
+        } else if(cols.length === 5){
+          code = cols[0];
+          cat = cols[1] || 'Generale';
+          desc = cols[2];
+          um = cols[3] || 'pz';
+          prezzoRaw = cols[4];
+        } else if(cols.length >= 3){
+          // fallback minimo
+          code = cols[0];
+          desc = cols[1];
+          prezzoRaw = cols[2];
+        }
+      }
+
+      // Filtro righe valide
+      const prezzo = parsePrice(prezzoRaw);
+      if(desc && String(desc).trim().length && prezzo !== null && !isNaN(prezzo)){
+        tx.objectStore('listino').put({
+          id: Date.now() + Math.random(),
+          code: code || '',
+          cat: cat || 'Generale',
+          desc: desc,
+          um: um || 'pz',
+          prezzo: prezzo,
+          qta_default: (qtaRaw && String(qtaRaw).trim().length) ? parsePrice(qtaRaw) : null,
+          importo_default: (impRaw && String(impRaw).trim().length) ? parsePrice(impRaw) : null
+        });
+        imported++;
+      }
+    }
+
+    tx.oncomplete = () => {
+      if(status){
+        status.textContent = `✅ Listino importato: ${imported} voci`;
+        status.style.color="var(--success)";
+      } else {
+        alert(`✅ Listino Caricato! ${imported} voci.`);
+      }
+      caricaListino();
+    };
+  };
+  r.onerror = () => {
+    const status = document.getElementById('csvStatus');
+    if(status){ status.textContent = "❌ Errore lettura file."; status.style.color="var(--danger)"; }
+  };
+  r.readAsText(f);
+}
+
+// Normalizza intestazioni per mappare sinonimi
+function normalizeHeader(h){
+  const s = (h||"").toString().trim().toLowerCase()
+    .replace(/\./g,'')
+    .replace(/\s+/g,' ')
+    .replace(/à/g,'a').replace(/è/g,'e').replace(/é/g,'e').replace(/ì/g,'i').replace(/ò/g,'o').replace(/ù/g,'u');
+
+  if(s.includes('cod') || s.includes('articolo')) return 'codice';
+  if(s.includes('sottocat') || s.includes('subcat')) return 'sottocategoria';
+  if(s.includes('cat')) return 'categoria';
+  if(s.includes('descr')) return 'descrizione';
+  if(s === 'um' || s.includes('unita') || s.includes('unità') || s.includes('u m')) return 'um';
+  if(s.includes('prezzo') && (s.includes('unit') || s.includes('unitario') || s.includes('p.u') || s.includes('pu'))) return 'prezzo_unitario';
+  if(s === 'prezzo') return 'prezzo_unitario';
+  if(s.includes('qta') || s.includes('quant')) return 'quantita';
+  if(s.includes('importo') || s.includes('totale') || s.includes('amount')) return 'importo';
+  return s;
+}
+function pick(arr, idx){ return (idx>=0 && idx < arr.length) ? arr[idx] : ""; }
+
+// === 2. FUNZIONI AI & VOCE ===
+function startVoice(){
+  if (!('webkitSpeechRecognition' in window)) { alert("Il tuo browser non supporta la dettatura."); return; }
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = 'it-IT';
+  recognition.start();
+  recognition.onresult = function(event) {
+    const text = event.results[0][0].transcript;
+    document.getElementById('editDesc').value += (document.getElementById('editDesc').value ? " " : "") + text;
+  };
+}
+
+function cercaSulWeb(){
+  const txt = document.getElementById('editDesc').value || document.getElementById('txtCerca').value;
+  if(txt) window.open('https://www.google.com/search?q=prezzo ' + encodeURIComponent(txt), '_blank');
+  else alert("Scrivi qualcosa nella descrizione prima di cercare.");
+}
+
+// === 3. LISTINO & UI ===
+function caricaListino(){
+  db.transaction('listino').objectStore('listino').getAll().onsuccess = e => {
+    listino = e.target.result || [];
+    document.getElementById('csvStatus').innerText = listino.length + " articoli in memoria.";
+    const cats = [...new Set(listino.map(x=>x.cat))].sort();
+    const sel = document.getElementById('filtroCat');
+    sel.innerHTML = '<option value="">Tutte le Categorie</option>';
+    cats.forEach(c => sel.innerHTML+=`<option>${c}</option>`);
+  };
+}
+
+function filtraListino(){
+  const txt = document.getElementById('txtCerca').value.toLowerCase();
+  const cat = document.getElementById('filtroCat').value;
+  const sel = document.getElementById('risultatiListino');
+  if(txt.length<2 && cat==="") { sel.innerHTML="<option>-- Inizia a scrivere --</option>"; return; }
+  
+  const found = listino.filter(x => (cat==="" || x.cat===cat) && x.desc.toLowerCase().includes(txt));
+  sel.innerHTML = `<option value="">-- Trovati ${found.length} --</option>`;
+  found.slice(0,50).forEach(x => {
+    // VISUALIZZAZIONE PULITA NEL MENU
+    const codeStr = x.code ? `[${x.code}] ` : '';
+    sel.innerHTML += `<option value="${x.id}">${codeStr}${x.desc} (${x.um}) - €${x.prezzo}</option>`;
+  });
+}
+
+function selezionaVoce(){
+  const id = parseFloat(document.getElementById('risultatiListino').value);
+  const item = listino.find(x=>x.id===id);
+  if(item){
+    document.getElementById('editCat').value = item.cat;
+    document.getElementById('editDesc').value = (item.code ? `[${item.code}] ` : '') + item.desc;
+    document.getElementById('editUm').value = item.um;
+    document.getElementById('editPrezzo').value = (item.prezzo ?? 0);
+
+    // Se il CSV è un computo metrico: precompila quantità e (se presente) totale
+    if(item.qta_default !== undefined && item.qta_default !== null && !isNaN(item.qta_default)){
+      document.getElementById('editQta').value = item.qta_default;
+    }
+
+    updateTotaleRiga();
+    document.getElementById('editQta').focus();
+  }
+}
+
+// === STANDARD APP FUNCTIONS ===
+function svuotaListino(){ if(confirm("Svuotare listino?")) db.transaction('listino','readwrite').objectStore('listino').clear().onsuccess=caricaListino; }
+
+function aggiungiVoce(){
+  const v = {
+    cat: document.getElementById('editCat').value,
+    desc: document.getElementById('editDesc').value,
+    um: document.getElementById('editUm').value,
+    prezzo: parseFloat(document.getElementById('editPrezzo').value)||0,
+    qta: parseFloat(document.getElementById('editQta').value)||0
+  };
+  if(!v.desc){ alert("Manca descrizione"); return; }
+  preventivo.push(v);
+  if(document.getElementById('saveToListino').checked){
+     db.transaction('listino','readwrite').objectStore('listino').put({id:Date.now(), cat:v.cat, desc:v.desc, um:v.um, prezzo:v.prezzo});
+  }
+  renderVoci();
+  document.getElementById('editDesc').value=""; document.getElementById('editQta').value="";
+}
+
+function renderVoci(){
+  const c = document.getElementById('containerVoci'); c.innerHTML="";
+  let imp = 0;
+  document.getElementById('msgVuoto').style.display = preventivo.length ? 'none' : 'block';
+  preventivo.forEach((v,i)=>{
+    imp += v.qta*v.prezzo;
+    c.innerHTML += `
+    <div class="voce-item">
+      <div style="flex:1; padding-right:10px;">
+        <span style="font-size:10px; background:#eee; padding:2px 5px; border-radius:4px;">${v.cat}</span>
+        <div style="font-weight:600;">${v.desc}</div>
+        <div style="font-size:12px; color:#666;">${v.qta} ${v.um} x €${v.prezzo.toFixed(2)}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:bold;">€ ${(v.qta*v.prezzo).toFixed(2)}</div>
+        <button class="btn-danger btn-small" style="margin-top:5px;" onclick="preventivo.splice(${i},1);renderVoci()">X</button>
+      </div>
+    </div>`;
+  });
+  const ivaP = parseFloat(document.getElementById('ivaSelect').value);
+  const tot = imp + (imp*ivaP/100);
+  document.getElementById('totDisplay').innerText = `€ ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}`;
+  document.getElementById('countVoci').innerText = preventivo.length + " Voci";
+}
+
+function addSALPreset(nome, perc){ salList.push({desc: nome, perc: perc}); renderSAL(); }
+function renderSAL(){
+  const c = document.getElementById('containerSAL'); c.innerHTML="";
+  salList.forEach((s,i)=>{
+    c.innerHTML += `
+    <div class="btn-row" style="align-items:center; margin-bottom:5px;">
+      <input value="${s.desc}" onchange="salList[${i}].desc=this.value" style="flex:2; margin:0;">
+      <input type="number" value="${s.perc}" onchange="salList[${i}].perc=this.value" style="width:60px; margin:0;">
+      <span>%</span>
+      <button class="btn-danger btn-small" onclick="salList.splice(${i},1);renderSAL()">X</button>
+    </div>`;
+  });
+}
+
+function salvaPreventivo(){
+  if(!document.getElementById('clienteNome').value){ alert("Manca Nome Cliente"); return; }
+  const obj = {
+    id: currentId || Date.now(),
+    dati: {
+      num: document.getElementById('numPrev').value,
+      data: document.getElementById('dataPrev').value,
+      nome: document.getElementById('clienteNome').value,
+      ind: document.getElementById('clienteIndirizzo').value,
+      cf: document.getElementById('clienteCF').value,
+      iva: document.getElementById('ivaSelect').value
+    },
+    voci: preventivo, sal: salList
+  };
+  db.transaction('preventivi','readwrite').objectStore('preventivi').put(obj).onsuccess = () => { alert("✅ Salvato!"); currentId=obj.id; };
+}
+
+function toggleView(view){
+  if(view==='archivio'){ document.getElementById('archivioModal').classList.remove('hidden'); caricaArchivio(); }
+  else { document.getElementById('archivioModal').classList.add('hidden'); }
+}
+function caricaArchivio(){
+  const c = document.getElementById('listaArchivio'); c.innerHTML="";
+  db.transaction('preventivi').objectStore('preventivi').getAll().onsuccess=e=>{
+    const res = e.target.result||[];
+    res.reverse().forEach(p=>{
+      c.innerHTML += `<div class="card" style="border-left:5px solid var(--primary);">
+        <b>${p.dati.nome}</b> <small>(${p.dati.num})</small>
+        <div class="btn-row" style="margin-top:5px;">
+          <button class="btn-primary btn-small" onclick="caricaP(${p.id})">Apri</button>
+          <button class="btn-danger btn-small" onclick="eliminaP(${p.id})">Elimina</button>
+        </div>
+      </div>`;
+    });
+  };
+}
+function caricaP(id){
+  db.transaction('preventivi').objectStore('preventivi').get(id).onsuccess=e=>{
+    const p=e.target.result; currentId=p.id;
+    document.getElementById('numPrev').value=p.dati.num; document.getElementById('dataPrev').value=p.dati.data;
+    document.getElementById('clienteNome').value=p.dati.nome; document.getElementById('clienteIndirizzo').value=p.dati.ind;
+    document.getElementById('clienteCF').value=p.dati.cf; preventivo=p.voci; salList=p.sal||[];
+    renderVoci(); renderSAL(); toggleView('main');
+  }
+}
+function eliminaP(id){ if(confirm("Eliminare?")) db.transaction('preventivi','readwrite').objectStore('preventivi').delete(id).onsuccess=caricaArchivio; }
+
+function salvaConfig(){ db.transaction('config','readwrite').objectStore('config').put({id:'main', h:document.getElementById('confIntestazione').value, f:document.getElementById('confFooter').value}); }
+function salvaLogo(e){ const f=e.target.files[0]; const r=new FileReader(); r.onload=evt=>db.transaction('config','readwrite').objectStore('config').put({id:'logo', d:evt.target.result}); if(f) r.readAsDataURL(f); }
+function caricaConfig(){ db.transaction('config').objectStore('config').get('main').onsuccess=e=>{ if(e.target.result){ document.getElementById('confIntestazione').value=e.target.result.h||''; document.getElementById('confFooter').value=e.target.result.f||''; }}}
+
+function anteprimaStampa(){
+  db.transaction('config').objectStore('config').get('logo').onsuccess=e=>{
+    const logo = e.target.result?e.target.result.d:null;
+    const h = document.getElementById('confIntestazione').value.replace(/\n/g,'<br>');
+    const f = document.getElementById('confFooter').value.replace(/\n/g,'<br>');
+    const hideP = document.getElementById('chkNoPrezzi').checked; 
+    const ivaP = parseFloat(document.getElementById('ivaSelect').value);
+    
+    let imp=0; preventivo.forEach(v=>imp+=v.qta*v.prezzo);
+    const tot = imp + (imp*ivaP/100);
+
+    let html = `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color:#333; line-height:1.4;">
+      <table width="100%" style="border-bottom:2px solid #333; padding-bottom:20px; margin-bottom:20px;">
+        <tr>
+          <td valign="top" width="50%">${logo?`<img src="${logo}" style="height:80px; margin-bottom:10px;">`:''} <div style="font-size:14px;">${h}</div></td>
+          <td valign="top" align="right">
+            <h1 style="margin:0; font-size:24px; color:#007AFF;">PREVENTIVO</h1>
+            <div style="font-size:14px;">N. <b>${document.getElementById('numPrev').value}</b> - ${document.getElementById('dataPrev').value}</div>
+            <div style="margin-top:10px; background:#f9f9f9; padding:10px; border-radius:5px; text-align:left; display:inline-block;">
+              <small>Spett.le Cliente:</small><br><b>${document.getElementById('clienteNome').value}</b><br>${document.getElementById('clienteIndirizzo').value}<br>${document.getElementById('clienteCF').value}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <table width="100%" style="border-collapse:collapse; margin-top:10px; font-size:14px;">
+        <tr style="background:#007AFF; color:white;">
+          <th align="left" style="padding:10px;">DESCRIZIONE</th>
+          <th align="center" width="50">UM</th><th align="center" width="50">QTA</th>
+          ${!hideP ? '<th align="right" width="100" style="padding:10px;">PREZZO</th><th align="right" width="100" style="padding:10px;">TOTALE</th>' : ''}
+        </tr>`;
+    
+    preventivo.forEach((v, idx) => {
+      html+=`<tr style="background:${idx%2===0?'#fff':'#f9f9f9'}; border-bottom:1px solid #ddd;">
+        <td style="padding:10px;"><b>${v.cat}</b><br>${v.desc}</td>
+        <td align="center">${v.um}</td><td align="center"><b>${v.qta}</b></td>
+        ${!hideP ? `<td align="right">€ ${v.prezzo.toFixed(2)}</td><td align="right"><b>€ ${(v.qta*v.prezzo).toFixed(2)}</b></td>` : ''}
+      </tr>`;
+    });
+    html+=`</table>`;
+
+    if(!hideP){
+      html+=`<div style="margin-top:20px; text-align:right;">
+        <div style="padding:5px;">Imponibile: € ${imp.toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+        <div style="padding:5px;">IVA (${ivaP}%): € ${(imp*ivaP/100).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+        <div style="font-size:20px; font-weight:bold; color:#007AFF; margin-top:5px;">TOTALE: € ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+      </div>`;
+    } else {
+       html+=`<div style="margin-top:20px; text-align:right;"><div style="padding:10px; background:#eee; font-size:18px; font-weight:bold;">TOTALE: € ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>`;
+    }
+
+    if(salList.length>0){
+      html+=`<div style="margin-top:30px;"><h4>PIANO PAGAMENTI</h4><ul>`;
+      salList.forEach(s=>html+=`<li><b>${s.desc}</b> (${s.perc}%): € ${(tot*s.perc/100).toLocaleString('it-IT',{minimumFractionDigits:2})}</li>`);
+      html+='</ul></div>';
+    }
+
+    html+=`<div style="margin-top:50px; display:flex; justify-content:space-between; text-align:center; font-size:12px;"><div style="width:40%; border-top:1px solid #000;">Firma Impresa</div><div style="width:40%; border-top:1px solid #000;">Per Accettazione</div></div>
+    <div style="margin-top:30px; font-size:10px; color:#777; text-align:center;">${f}</div></div>`;
+
+    document.getElementById('foglioA4').innerHTML = html;
+    document.getElementById('appInterface').classList.add('hidden');
+    document.getElementById('floatBar').classList.add('hidden');
+    document.getElementById('printOverlay').style.display='block';
+  }
+}
+function chiudiStampa(){
+    document.getElementById('printOverlay').style.display='none';
+    document.getElementById('appInterface').classList.remove('hidden');
+    document.getElementById('floatBar').classList.remove('hidden');
+    document.getElementById('floatBar').style.display = 'flex';
+}
+// === PWA (installabile) ===
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+</script>
+</body>
+</html>
